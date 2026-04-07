@@ -57,4 +57,5 @@ end
 local myWatcher = hs.pathwatcher.new(hs.configdir .. "/", reloadConfig):start()
 
 -- 显示配置就绪的提示信息
-hs.alert.show("Hammerspoon 配置已就绪 🔥")
+local notify = require("utils.notify")
+notify.show("Hammerspoon 配置已就绪 🔥")
