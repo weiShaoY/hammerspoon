@@ -6,9 +6,8 @@ local M = {}
 local page = 1
 local choices = {}
 local chooser_raw_len = 0
-local default_download_tool = "curl" -- or aria2c, curl
 local base_url = "https://www.doutub.com"
-local cache_dir = os.getenv("HOME") .. "/.hammerspoon/.emoji/"
+local temp_dir = os.getenv("HOME") .. "/.hammerspoon/.emoji-temp/"
 local emoji_canvas
 local chooser
 local select_key
@@ -21,7 +20,6 @@ end
 -- 模拟 htmlparser 功能（简化版）
 local function parse_html(body)
     local response_data = {}
-    local img_urls = {}
 
     -- 简单的正则匹配获取图片
     for alt, src in body:gmatch('alt="([^"]+)"[^>]*data%-src="([^"]+)"') do
@@ -33,20 +31,19 @@ local function parse_html(body)
     return response_data
 end
 
-local function render_chooser(file_path, resource_origin)
+local function render_chooser(file_path)
     local image = hs.image.imageFromPath(file_path)
     if (#choices >= 10) or not image then
         return
     end
     local filename_ext = file_path:match("^.+%.([^%.]+)$")
-    local title = file_path:gsub(cache_dir, ""):gsub("." .. filename_ext, "")
+    local title = file_path:gsub(temp_dir, ""):gsub("." .. filename_ext, "")
     if (#choices > 0) and (title == choices[#choices]["text"]) then
         return
     end
-    local subtext = "来源: " .. ((resource_origin == "local") and "本地" or "网络")
     table.insert(choices, {
         text = title,
-        subText = subtext,
+        subText = "来源: 网络",
         path = file_path,
         image = image,
     })
@@ -54,49 +51,23 @@ local function render_chooser(file_path, resource_origin)
 end
 
 local function download_file(url, file_path)
-    local filename = file_path:gsub(cache_dir, "")
-    local save_path = hs.fs.pathToAbsolute(cache_dir)
-    local download_tools = {
-        ["curl"] = {
-            ["path"] = "/usr/bin/curl",
-            ["args"] = {
-                "--header",
-                "Referer: " .. base_url,
-                "--connect-timeout",
-                "3",
-                "-L",
-                url,
-                "--create-dirs",
-                "-o",
-                file_path,
-            },
-        },
-        ["aria2c"] = {
-            ["path"] = "/opt/homebrew/bin/aria2c",
-            ["args"] = {
-                "--header=Referer: " .. base_url,
-                "--enable-rpc=false",
-                "--continue=true",
-                "-d",
-                save_path,
-                "-o",
-                filename,
-                url,
-            },
-        },
-    }
-    local exist_ok, err = hs.fs.attributes(file_path)
-    if exist_ok then
-        render_chooser(file_path, "local")
-    else
-        -- 异步方式下载
-        local down_emoji_task = hs.task.new(
-            download_tools[default_download_tool]["path"],
-            function() render_chooser(file_path, "internet") end,
-            download_tools[default_download_tool]["args"]
-        )
-        down_emoji_task:start()
-    end
+    -- 异步方式下载
+    local down_emoji_task = hs.task.new(
+        "/usr/bin/curl",
+        function() render_chooser(file_path) end,
+        {
+            "--header",
+            "Referer: " .. base_url,
+            "--connect-timeout",
+            "3",
+            "-L",
+            url,
+            "--create-dirs",
+            "-o",
+            file_path,
+        }
+    )
+    down_emoji_task:start()
 end
 
 local function preview(path)
@@ -132,7 +103,7 @@ local function request(query_kw)
                 local title = v[1]:gsub(" ", "")
                 local img_url = v[2]
                 local filename_ext = hs.http.urlParts(img_url).pathExtension
-                local file_path = cache_dir .. title .. "." .. filename_ext
+                local file_path = temp_dir .. title .. "." .. filename_ext
                 -- 下载图片
                 download_file(img_url, file_path)
             end
@@ -140,58 +111,16 @@ local function request(query_kw)
     end)
 end
 
-local function search_emoji_from_local(query_kw)
-    if not query_kw then
-        return
-    end
-    local local_choices = {}
-    local limit_count = 10
-    local query = trim(query_kw)
-    local opts = {
-        ["subdirs"] = true,
-    }
-    local filelist, filecount, _dircount = hs.fs.fileListForPath(cache_dir, opts)
-    if not filelist or filecount == 0 then
-        return false
-    end
-    chooser_raw_len = (filecount > 10) and 10 or filecount
-    local start_index = (page > 1) and ((page - 1) * 10) or 0
-    for i, _f in ipairs(filelist) do
-        local file_path = filelist[i]
-        local filename = hs.fs.displayName(file_path)
-        local filename_ext = string.match(filename, "^.+%.([^%.]+)$")
-        if filename_ext then
-            local short_fn = filename:gsub("." .. filename_ext, "")
-            if short_fn:find(query) then
-                if start_index > 0 then
-                    start_index = start_index - 1
-                    goto SKIP_LAST_PAGE
-                end
-                table.insert(local_choices, {
-                    text = short_fn,
-                    subText = "来源: 本地",
-                    path = file_path,
-                    image = hs.image.imageFromPath(file_path),
-                })
-                limit_count = limit_count - 1
-                if limit_count == 0 then
-                    break
-                end
-                ::SKIP_LAST_PAGE::
-            end
-        end
-    end
-    chooser:choices(local_choices)
-    if limit_count == 0 then
-        return true
-    end
-end
-
 function M.start()
-    -- 创建缓存目录
-    if not hs.fs.pathToAbsolute(cache_dir) then
-        hs.fs.mkdir(cache_dir)
+    -- 创建临时目录
+    if not hs.fs.pathToAbsolute(temp_dir) then
+        hs.fs.mkdir(temp_dir)
     end
+
+    -- 每小时自动清理临时文件夹
+    hs.timer.doEvery(3600, function()
+        clean_temp_dir()
+    end)
 
     -- 获取屏幕信息
     local focusedWindow = hs.window.focusedWindow()
@@ -241,12 +170,8 @@ function M.start()
             local key = hs.keycodes.map[keycode]
             if "right" == key then
                 page = page + 1
-                local query = chooser:query()
-                local exist_local = search_emoji_from_local(query)
-                if not exist_local then
-                    choices = {}
-                    request(chooser:query())
-                end
+                choices = {}
+                request(chooser:query())
                 return
             end
             if "left" == key then
@@ -255,10 +180,8 @@ function M.start()
                     return
                 end
                 page = page - 1
-                local exist_local = search_emoji_from_local(chooser:query())
-                if not exist_local then
-                    request(chooser:query())
-                end
+                choices = {}
+                request(chooser:query())
                 return
             end
 
@@ -291,12 +214,9 @@ function M.start()
     chooser:queryChangedCallback(function()
         hs.timer.doAfter(0.3, function()
             local query = chooser:query()
-            local exist_local = search_emoji_from_local(query)
-            if not exist_local then
-                page = 1
-                choices = {}
-                request(query)
-            end
+            page = 1
+            choices = {}
+            request(query)
         end)
     end)
 
