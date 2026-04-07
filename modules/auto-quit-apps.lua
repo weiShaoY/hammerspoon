@@ -33,5 +33,3 @@ wf:subscribe(hs.window.filter.windowDestroyed, function(win)
     end)
 end)
 
--- 打印加载成功
-hs.alert.show("Hammerspoon 自动退出脚本已加载")

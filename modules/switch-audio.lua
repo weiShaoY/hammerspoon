@@ -1,6 +1,6 @@
 -- Hammerspoon: 音频输出设备切换模块
 -- 功能：在两个指定的音频设备之间切换（Headsets <-> Yamaha YVC-330）
--- 使用方法：在 hotkeys.lua 里绑定热键（默认 F13）
+-- 使用方法：在 init.lua 里绑定热键（默认 F13）
 
 -- 定义要切换的两个音频设备
 local DEVICES = {
