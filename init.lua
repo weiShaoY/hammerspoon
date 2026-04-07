@@ -35,7 +35,6 @@ end
 -- 加载各个目录下的模块
 -- 注意：require 加载是以 ~/.hammerspoon/ 为根目录的
 loadFolderFiles('configs')  -- 加载 configs 目录下的模块
-loadFolderFiles('utils')    -- 加载 utils 目录下的模块
 loadFolderFiles('modules')  -- 加载 modules 目录下的模块
 
 -- 加载热键配置

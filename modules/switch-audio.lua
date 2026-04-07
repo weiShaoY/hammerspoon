@@ -4,7 +4,7 @@
 
 -- 定义要切换的两个音频设备
 local DEVICES = {
-    {name = "Headsets", icon = "🎧"},           -- 耳机设备
+    {name = "EarPods", icon = "🎧"},           -- 耳机设备
     {name = "Yamaha YVC-330", icon = "🔈"}     -- 雅马哈设备
 }
 
