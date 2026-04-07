@@ -1,6 +1,6 @@
 -- Hammerspoon: 音频输出设备切换模块
 -- 功能：在两个指定的音频设备之间切换（Headsets <-> Yamaha YVC-330）
--- 使用方法：按 F12 键切换音频设备
+-- 使用方法：在 hotkeys.lua 里绑定热键（默认 F13）
 
 -- 定义要切换的两个音频设备
 local DEVICES = {
@@ -31,7 +31,20 @@ local function toggleAudioOutput()
 
     -- 如果任一设备不存在，显示错误提示
     if not device1 or not device2 then
-        hs.alert.show("❌ 找不到音频设备")
+        local missing = {}
+        if not device1 then missing[#missing + 1] = DEVICES[1].name end
+        if not device2 then missing[#missing + 1] = DEVICES[2].name end
+
+        local available = {}
+        for name, _ in pairs(allDevices) do
+            available[#available + 1] = name
+        end
+        table.sort(available)
+
+        hs.alert.show("❌ 找不到音频设备: " .. table.concat(missing, ", "))
+        if #available > 0 then
+            print("可用输出设备: " .. table.concat(available, " | "))
+        end
         return
     end
 
@@ -62,13 +75,9 @@ local function toggleAudioOutput()
     end
 end
 
--- 绑定热键：按 F12 键（无修饰键）切换音频设备
-hs.hotkey.bind({}, "f13", toggleAudioOutput)
+local M = {
+    devices = DEVICES,
+    toggleAudioOutput = toggleAudioOutput,
+}
 
--- 加载提示信息
-print("🎧 音频切换脚本已加载")
-print("📢 按 F13 切换设备:")
--- 遍历并打印所有可切换的设备
-for i, device in ipairs(DEVICES) do
-    print("  " .. i .. ". " .. device.icon .. " " .. device.name)
-end
+return M

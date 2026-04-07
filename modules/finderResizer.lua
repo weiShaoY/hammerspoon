@@ -3,7 +3,8 @@
 -- 配置参数
 local RESIZE_MIN_WIDTH = 1400  -- 窗口最小宽度
 local RESIZE_MIN_HEIGHT = 1000 -- 窗口最小高度
-local RESIZE_TARGET_APP = "访达" -- 目标应用程序名称
+local RESIZE_TARGET_BUNDLE_ID = "com.apple.finder"
+local RESIZE_TARGET_APP_NAMES = { ["Finder"] = true, ["访达"] = true }
 
 -- 调整目标窗口大小的函数
 -- @param window 窗口对象
@@ -13,8 +14,12 @@ local function resizeTargetWindow(window)
 
     -- 获取窗口所属的应用程序
     local app = window:application()
-    -- 检查应用程序是否存在且名称是否匹配目标应用程序
-    if not (app and app:name() == RESIZE_TARGET_APP) then
+    if not app then return end
+
+    local bundleID = app:bundleID()
+    local appName = app:name()
+    local isFinder = (bundleID == RESIZE_TARGET_BUNDLE_ID) or (appName and RESIZE_TARGET_APP_NAMES[appName])
+    if not isFinder then
         return
     end
 
@@ -23,27 +28,50 @@ local function resizeTargetWindow(window)
     -- 标记是否需要调整大小
     local needsResize = false
 
-    -- 如果窗口宽度小于最小宽度，调整宽度
-    if frame.w < RESIZE_MIN_WIDTH then
-        frame.w = RESIZE_MIN_WIDTH
+    local screen = window:screen()
+    local screenFrame = screen and screen:frame() or nil
+
+    local targetW = math.max(frame.w, RESIZE_MIN_WIDTH)
+    local targetH = math.max(frame.h, RESIZE_MIN_HEIGHT)
+    if screenFrame then
+        targetW = math.min(targetW, screenFrame.w)
+        targetH = math.min(targetH, screenFrame.h)
+    end
+
+    if frame.w ~= targetW then
+        frame.w = targetW
+        needsResize = true
+    end
+    if frame.h ~= targetH then
+        frame.h = targetH
         needsResize = true
     end
 
-    -- 如果窗口高度小于最小高度，调整高度
-    if frame.h < RESIZE_MIN_HEIGHT then
-        frame.h = RESIZE_MIN_HEIGHT
-        needsResize = true
+    if screenFrame then
+        local maxX = screenFrame.x + screenFrame.w - frame.w
+        local maxY = screenFrame.y + screenFrame.h - frame.h
+
+        local newX = math.max(screenFrame.x, math.min(frame.x, maxX))
+        local newY = math.max(screenFrame.y, math.min(frame.y, maxY))
+        if frame.x ~= newX then
+            frame.x = newX
+            needsResize = true
+        end
+        if frame.y ~= newY then
+            frame.y = newY
+            needsResize = true
+        end
     end
 
     -- 如果需要调整大小，显示通知并应用新的窗口大小
     if needsResize then
-        hs.alert.show("正在调整 '" .. RESIZE_TARGET_APP .. "' 窗口...")
+        hs.alert.show("正在调整 Finder 窗口...")
         window:setFrame(frame)
     end
 end
 
 -- 创建窗口过滤器，用于监听目标应用程序的窗口事件
-local finderResizeFilter = hs.window.filter.new(RESIZE_TARGET_APP)
+local finderResizeFilter = hs.window.filter.new({ "Finder", "访达" })
 -- 订阅窗口创建和窗口获取焦点事件，当事件触发时调用 resizeTargetWindow 函数
 finderResizeFilter:subscribe({
     hs.window.filter.windowCreated,  -- 窗口创建事件
