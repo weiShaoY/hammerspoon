@@ -67,7 +67,7 @@ hs.hotkey.bind({}, "f13", toggleAudioOutput)
 
 -- 加载提示信息
 print("🎧 音频切换脚本已加载")
-print("📢 按 F12 切换设备:")
+print("📢 按 F13 切换设备:")
 -- 遍历并打印所有可切换的设备
 for i, device in ipairs(DEVICES) do
     print("  " .. i .. ". " .. device.icon .. " " .. device.name)
