@@ -66,6 +66,7 @@ end
 
 startModule("modules.finder-resizer")
 startModule("modules.auto-quit-apps")
+startModule("modules.emoji-face")
 
 -- 快捷键统一在 init.lua 里绑定
 
@@ -79,6 +80,12 @@ end)
 local wechat = require("modules.open-wechat")
 hs.hotkey.bind({}, "F14", function()
     wechat.openWeChat()
+end)
+
+-- F15：打开表情包搜索
+local emojiFace = require("modules.emoji-face")
+hs.hotkey.bind({}, "F15", function()
+    emojiFace.show()
 end)
 
 -- 显示配置就绪的提示信息
