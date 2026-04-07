@@ -5,11 +5,11 @@ local TARGET_APPS = {
 }
 -- ==========================================================
 
--- 创建窗口过滤器：只监听目标应用
-local wf = hs.window.filter.new(TARGET_APPS)
+local M = {
+    targetApps = TARGET_APPS,
+}
 
--- 监听【窗口被销毁】（点 X 关闭）
-wf:subscribe(hs.window.filter.windowDestroyed, function(win)
+local function onWindowDestroyed(win)
     if not win then return end
 
     local app = win:application()
@@ -31,5 +31,24 @@ wf:subscribe(hs.window.filter.windowDestroyed, function(win)
             }):send()
         end
     end)
-end)
+end
 
+function M.start()
+    if M._wf then return M end
+    -- 创建窗口过滤器：只监听目标应用
+    M._wf = hs.window.filter.new(M.targetApps)
+    -- 监听【窗口被销毁】（点 X 关闭）
+    M._wf:subscribe(hs.window.filter.windowDestroyed, onWindowDestroyed)
+    return M
+end
+
+function M.stop()
+    if not M._wf then return M end
+    if type(M._wf.unsubscribeAll) == "function" then
+        M._wf:unsubscribeAll()
+    end
+    M._wf = nil
+    return M
+end
+
+return M

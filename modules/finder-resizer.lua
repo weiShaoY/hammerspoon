@@ -6,6 +6,8 @@ local RESIZE_MIN_HEIGHT = 1000 -- 窗口最小高度
 local RESIZE_TARGET_BUNDLE_ID = "com.apple.finder"
 local RESIZE_TARGET_APP_NAMES = { ["Finder"] = true, ["访达"] = true }
 
+local M = {}
+
 -- 调整目标窗口大小的函数
 -- @param window 窗口对象
 local function resizeTargetWindow(window)
@@ -70,10 +72,25 @@ local function resizeTargetWindow(window)
     end
 end
 
--- 创建窗口过滤器，用于监听目标应用程序的窗口事件
-local finderResizeFilter = hs.window.filter.new({ "Finder", "访达" })
--- 订阅窗口创建和窗口获取焦点事件，当事件触发时调用 resizeTargetWindow 函数
-finderResizeFilter:subscribe({
-    hs.window.filter.windowCreated,  -- 窗口创建事件
-    hs.window.filter.windowFocused  -- 窗口获取焦点事件
-}, resizeTargetWindow)
+function M.start()
+    if M._filter then return M end
+    -- 创建窗口过滤器，用于监听目标应用程序的窗口事件
+    M._filter = hs.window.filter.new({ "Finder", "访达" })
+    -- 订阅窗口创建和窗口获取焦点事件，当事件触发时调用 resizeTargetWindow 函数
+    M._filter:subscribe({
+        hs.window.filter.windowCreated,  -- 窗口创建事件
+        hs.window.filter.windowFocused  -- 窗口获取焦点事件
+    }, resizeTargetWindow)
+    return M
+end
+
+function M.stop()
+    if not M._filter then return M end
+    if type(M._filter.unsubscribeAll) == "function" then
+        M._filter:unsubscribeAll()
+    end
+    M._filter = nil
+    return M
+end
+
+return M
