@@ -65,8 +65,8 @@ local function startModule(modulePath)
 end
 
 startModule("modules.finder-resizer")
-startModule("modules.auto-quit-apps")
-startModule("modules.emoji-face")
+-- startModule("modules.auto-quit-apps")
+-- startModule("modules.emoji-face")
 
 -- 快捷键统一在 init.lua 里绑定
 
@@ -83,10 +83,10 @@ hs.hotkey.bind({}, "F14", function()
 end)
 
 -- F15：打开表情包搜索
-local emojiFace = require("modules.emoji-face")
-hs.hotkey.bind({}, "F15", function()
-    emojiFace.show()
-end)
+-- local emojiFace = require("modules.emoji-face")
+-- hs.hotkey.bind({}, "F15", function()
+--     emojiFace.show()
+-- end)
 
 -- 显示配置就绪的提示信息
 notify.show("Hammerspoon 配置已就绪 🔥")
